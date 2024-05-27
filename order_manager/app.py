@@ -1,8 +1,10 @@
 from flask import Flask
 import sqlite3
 from shared.kafka_utils import create_consumer, create_producer
-from shared.event_schema import InventarioActualizado
+from shared.event_schema import PedidoCreado, InventarioActualizado
 import jsonschema
+import threading
+import datetime
 
 app = Flask(__name__)
 
@@ -22,9 +24,16 @@ def handle_pedido_creado(pedido):
     actualizar_inventario(productos)
 
 def actualizar_inventario(productos):
+    productos_actualizados = []
+    for producto in productos:
+        productos_actualizados.append({
+            "productoId": producto["productoId"],
+            "cantidadActual": producto["cantidad"]  # Asegúrate de usar la clave correcta aquí
+        })
+
     inventario_actualizado = {
-        "fechaActualizacion": "2024-05-26T12:34:56",
-        "productosActualizados": productos
+        "fechaActualizacion": datetime.datetime.now().isoformat(),
+        "productosActualizados": productos_actualizados
     }
     producer.send('InventarioActualizado', inventario_actualizado)
 
@@ -32,9 +41,12 @@ def actualizar_inventario(productos):
 def index():
     return "Order Manager"
 
-if __name__ == '__main__':
+def consume_pedidos():
     for message in consumer:
         pedido = message.value
         jsonschema.validate(instance=pedido, schema=PedidoCreado)
         handle_pedido_creado(pedido)
+
+if __name__ == '__main__':
+    threading.Thread(target=consume_pedidos).start()
     app.run(host='0.0.0.0', port=5001)

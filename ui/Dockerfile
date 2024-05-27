@@ -6,6 +6,6 @@ COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py app.py
-COPY ../shared ../shared
+COPY shared /app/shared
 
 CMD ["python", "app.py"]
